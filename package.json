@@ -17,6 +17,7 @@
     "board:unblock": "node scripts/board.mjs unblock",
     "board:move": "node scripts/board.mjs move",
     "board:edit": "node scripts/board.mjs edit",
+    "board:archive": "node scripts/board.mjs archive",
     "lint:board": "node scripts/lint-board.mjs"
   },
   "dependencies": {

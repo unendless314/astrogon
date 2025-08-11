@@ -8,6 +8,21 @@ const BOARD = path.join(ROOT, 'docs', 'BOARD.md');
 const OWNER_RE = /^(human:[a-z0-9._-]+|ai:astrogon)$/i;
 const ID_RE = /^\d{8}-[a-z0-9-]+$/;
 
+function warn(msg) { console.warn(`WARN: ${msg}`); }
+
+function todayUTC() {
+  const d = new Date();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function cmpDate(a, b) {
+  // compare YYYY-MM-DD strings lexicographically (safe for ISO)
+  if (a < b) return -1; if (a > b) return 1; return 0;
+}
+
 function err(msg) { console.error(msg); }
 
 async function main() {
@@ -37,6 +52,14 @@ async function main() {
   for (const l of sections.TODO) {
     const { rest } = checkCommon(l, false);
     if (rest && /\[blocked:/.test(rest)) { err(`TODO must not have blocked info: ${l}`); errors++; }
+    if (rest) {
+      const dm = rest.match(/\[due:\s*(\d{4}-\d{2}-\d{2})\]/i);
+      if (dm) {
+        const due = dm[1];
+        const today = todayUTC();
+        if (cmpDate(due, today) < 0) warn(`TODO has past due date (${due} < ${today}): ${l}`);
+      }
+    }
   }
   // BLOCKED section
   for (const l of sections.BLOCKED) {
@@ -45,7 +68,19 @@ async function main() {
     if (!mm) { err(`BLOCKED missing [blocked: reason; review: YYYY-MM-DD]: ${l}`); errors++; }
     else {
       const val = mm[1];
-      if (!/review:\s*\d{4}-\d{2}-\d{2}/i.test(val)) { err(`BLOCKED missing review date: ${l}`); errors++; }
+      const rm = val.match(/review:\s*(\d{4}-\d{2}-\d{2})/i);
+      if (!rm) { err(`BLOCKED missing review date: ${l}`); errors++; }
+      else {
+        const review = rm[1];
+        const today = todayUTC();
+        if (cmpDate(review, today) < 0) warn(`BLOCKED has past review date (${review} < ${today}): ${l}`);
+      }
+      const dm = rest.match(/\[due:\s*(\d{4}-\d{2}-\d{2})\]/i);
+      if (dm) {
+        const due = dm[1];
+        const today = todayUTC();
+        if (cmpDate(due, today) < 0) warn(`BLOCKED has past due date (${due} < ${today}): ${l}`);
+      }
     }
   }
   // DONE section
@@ -62,4 +97,3 @@ async function main() {
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
-

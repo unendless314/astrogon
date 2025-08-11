@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 // Single-file board CLI for docs/BOARD.md
-// Commands: create, complete, block, unblock, move, edit, list, help
+// Commands: create, complete, block, unblock, move, edit, list, archive, help
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const ROOT = process.cwd();
 const BOARD = path.join(ROOT, 'docs', 'BOARD.md');
 const OWNER_RE = /^(human:[a-z0-9._-]+|ai:astrogon)$/i;
+const DONE_KEEP = 50; // keep last N DONE items in BOARD.md
 
 function usage(code = 0) {
   const msg = `
-Board CLI\n\nUsage:\n  node scripts/board.mjs create --title "Title" [--slug slug] [--owner ai:astrogon] [--date YYYYMMDD] [--due YYYY-MM-DD] [--section todo|blocked] [--reason "..."] [--review YYYY-MM-DD]\n  node scripts/board.mjs complete <id> [--links "pr:#123|commit:abc123"]\n  node scripts/board.mjs block <id> --reason "..." [--review YYYY-MM-DD]\n  node scripts/board.mjs unblock <id>\n  node scripts/board.mjs move <id> --to todo|blocked|done\n  node scripts/board.mjs edit <id> [--title "New"] [--owner human:alice] [--due YYYY-MM-DD|null] [--links "..."] [--reason "..."] [--review YYYY-MM-DD|null]\n  node scripts/board.mjs list\n`;
+Board CLI\n\nUsage:\n  node scripts/board.mjs create --title "Title" [--slug slug] [--owner ai:astrogon] [--date YYYYMMDD] [--due YYYY-MM-DD] [--section todo|blocked] [--reason "..."] [--review YYYY-MM-DD]\n  node scripts/board.mjs complete <id> [--links "pr:#123|commit:abc123"]\n  node scripts/board.mjs block <id> --reason "..." [--review YYYY-MM-DD]\n  node scripts/board.mjs unblock <id>\n  node scripts/board.mjs move <id> --to todo|blocked|done\n  node scripts/board.mjs edit <id> [--title "New"] [--owner human:alice] [--due YYYY-MM-DD|null] [--links "..."] [--reason "..."] [--review YYYY-MM-DD|null]\n  node scripts/board.mjs archive\n  node scripts/board.mjs list\n`;
   console.log(msg.trim() + '\n');
   process.exit(code);
 }
@@ -49,6 +50,12 @@ function todayUTC() {
 
 function toId(date8, slug) { return `${date8}-${slug}`; }
 
+function randSuffix(len = 3) {
+  // short base36 segment, prefixed with 'x'
+  const n = Math.floor(Math.random() * Math.pow(36, len));
+  return 'x' + n.toString(36).padStart(len, '0');
+}
+
 async function readBoard() {
   const raw = await fs.readFile(BOARD, 'utf8');
   const lines = raw.split(/\r?\n/);
@@ -69,6 +76,17 @@ function findLine(sections, id) {
     if (idx !== -1) return { section: key, index: idx, line: sections[key][idx] };
   }
   return null;
+}
+
+function collectIds(sections) {
+  const set = new Set();
+  for (const key of Object.keys(sections)) {
+    for (const l of sections[key]) {
+      const obj = parseLine(l);
+      if (obj && obj.id) set.add(obj.id);
+    }
+  }
+  return set;
 }
 
 function buildLine({ checked, id, title, owner, due, reason, review, links }) {
@@ -100,18 +118,14 @@ async function writeBoard(state) {
   const out = [];
   let cur = null;
   for (const ln of lines) {
-    if (/^##\s+TODO\s*$/.test(ln)) { cur = 'TODO'; out.push(ln); continue; }
-    if (/^##\s+BLOCKED\s*$/.test(ln)) { cur = 'BLOCKED'; out.push(ln); continue; }
-    if (/^##\s+DONE\s*$/.test(ln)) { cur = 'DONE'; out.push(ln); continue; }
+    if (/^##\s+TODO\s*$/.test(ln)) { cur = 'TODO'; out.push(ln); for (const l of sections.TODO) out.push(l); continue; }
+    if (/^##\s+BLOCKED\s*$/.test(ln)) { cur = 'BLOCKED'; out.push(ln); for (const l of sections.BLOCKED) out.push(l); continue; }
+    if (/^##\s+DONE\s*$/.test(ln)) { cur = 'DONE'; out.push(ln); for (const l of sections.DONE) out.push(l); continue; }
     if (cur && ln.trim().startsWith('- [')) {
       // skip original list lines; we will write from sections
       continue;
     }
     out.push(ln);
-    // After the header, write the section list once
-    if (/^##\s+TODO\s*$/.test(ln)) { for (const l of sections.TODO) out.push(l); }
-    if (/^##\s+BLOCKED\s*$/.test(ln)) { for (const l of sections.BLOCKED) out.push(l); }
-    if (/^##\s+DONE\s*$/.test(ln)) { for (const l of sections.DONE) out.push(l); }
   }
   const text = out.join('\n').replace(/\n{3,}/g, '\n\n');
   await fs.writeFile(BOARD, text.trimEnd() + '\n', 'utf8');
@@ -132,7 +146,8 @@ function date8(input) {
 async function cmdCreate(opt) {
   const title = opt.title; if (!title) throw new Error('Missing --title');
   const slug = opt.slug ? slugify(opt.slug) : slugify(title);
-  const id = toId(date8(opt.date), slug);
+  const d8 = date8(opt.date);
+  let id = toId(d8, slug);
   const owner = opt.owner || 'ai:astrogon'; assertOwner(owner);
   const due = opt.due || null;
   const section = (opt.section || 'todo').toUpperCase();
@@ -140,7 +155,18 @@ async function cmdCreate(opt) {
   const review = section === 'BLOCKED' ? (opt.review || null) : null;
 
   const state = await readBoard();
-  if (findLine(state.sections, id)) throw new Error(`ID exists: ${id}`);
+  if (section === 'BLOCKED' && !review) throw new Error('BLOCKED requires --review YYYY-MM-DD');
+  // Ensure unique ID; if collision, append short suffix to slug
+  const idSet = collectIds(state.sections);
+  if (idSet.has(id)) {
+    let attempt = 0;
+    while (attempt < 3 && idSet.has(id)) {
+      const suf = randSuffix(attempt === 0 ? 3 : 4);
+      id = toId(d8, `${slug}-${suf}`);
+      attempt++;
+    }
+    if (idSet.has(id)) throw new Error(`ID exists even after retry: ${id}`);
+  }
   const line = buildLine({ checked: false, id, title, owner, due, reason, review, links: null });
   state.sections[section].push(line);
   await writeBoard(state);
@@ -162,6 +188,7 @@ async function cmdComplete(id, opt) {
 
 async function cmdBlock(id, opt) {
   if (!opt.reason) throw new Error('Missing --reason');
+  if (!opt.review) throw new Error('Missing --review YYYY-MM-DD');
   const state = await readBoard();
   const hit = findLine(state.sections, id); if (!hit) throw new Error(`Not found: ${id}`);
   const obj = parseLine(hit.line); obj.checked = false; obj.reason = opt.reason; obj.review = opt.review || obj.review || null;
@@ -214,6 +241,42 @@ async function cmdList() {
   console.log(raw);
 }
 
+function isoWeekInfo(date = new Date()) {
+  // Compute ISO week number in UTC
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayNum = d.getUTCDay() || 7; // 1-7, Monday=1
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return { year: d.getUTCFullYear(), week };
+}
+
+async function cmdArchive() {
+  const state = await readBoard();
+  const total = state.sections.DONE.length;
+  if (total <= DONE_KEEP) {
+    console.log(`Nothing to archive. DONE=${total} <= ${DONE_KEEP}`);
+    return;
+  }
+  const toArchive = state.sections.DONE.slice(0, total - DONE_KEEP);
+  state.sections.DONE = state.sections.DONE.slice(total - DONE_KEEP);
+
+  const { year, week } = isoWeekInfo(new Date());
+  const dir = path.join(ROOT, 'docs', 'board-archive');
+  const file = path.join(dir, `${year}-W${String(week).padStart(2, '0')}.md`);
+  await fs.mkdir(dir, { recursive: true });
+
+  let header = '';
+  try { await fs.access(file); } catch {
+    header = `# Board Archive\n\n> Archived from docs/BOARD.md on ${new Date().toISOString()} (UTC)\n\n## DONE\n`;
+  }
+  const blob = (header ? header + '\n' : '') + toArchive.join('\n') + '\n';
+  await fs.appendFile(file, blob, 'utf8');
+
+  await writeBoard(state);
+  console.log(`Archived ${toArchive.length} DONE items to ${path.relative(ROOT, file)}; kept ${DONE_KEEP} in BOARD.md`);
+}
+
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   const opt = parseArgs(rest);
@@ -225,6 +288,7 @@ async function main() {
       case 'unblock': await cmdUnblock(opt._[0]); break;
       case 'move': await cmdMove(opt._[0], opt.to); break;
       case 'edit': await cmdEdit(opt._[0], opt); break;
+      case 'archive': await cmdArchive(); break;
       case 'list': await cmdList(); break;
       case 'help':
       case undefined: usage(0); break;
@@ -237,4 +301,3 @@ async function main() {
 }
 
 main();
-
