@@ -162,6 +162,25 @@ const terms = defineCollection({
   schema: searchable,
 });
 
+const products = defineCollection({
+  loader: glob({
+    pattern: "**/[^_]*.{md,mdx}",
+    base: "./src/content/products",
+  }),
+  schema: ({ image }) =>
+    searchable.extend({
+      image: image().optional(),
+      imageAlt: z.string().default(""),
+      price: z.number(),
+      currency: z.string().default("TWD"),
+      summary: z.string().optional(),
+      paymentUrl: z.string(),
+      tags: z.array(z.string()).optional(),
+      published: z.boolean().default(true),
+      createdAt: z.date().optional(),
+    }),
+});
+
 // Export collections
 export const collections = {
   about,
@@ -173,5 +192,6 @@ export const collections = {
   poetry,
   portfolio,
   recipes,
+  products,
   terms,
 };

@@ -1,0 +1,43 @@
+---
+import { getIndex, getEntries } from "@lib/contentParser";
+import { sortByTitle } from "@lib/sortFunctions";
+import type { ProductsEntry } from "@/types";
+import CollectionLayout from "@components/products/CollectionLayout.astro";
+
+const entryIndex = (await getIndex("products")) as ProductsEntry;
+const allEntries = (await getEntries("products", sortByTitle)) as ProductsEntry[];
+const entries = allEntries.filter((e) => e.data.published !== false);
+
+const { slug } = Astro.params;
+
+const entriesPerPage = 6;
+const currentPageIndex = slug && !isNaN(Number(slug)) ? Number(slug) : 1;
+const pageCount = Math.ceil(entries.length / entriesPerPage);
+const indexOfLastEntry = currentPageIndex * entriesPerPage;
+const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
+const currentEntries = entries.slice(indexOfFirstEntry, indexOfLastEntry);
+
+export async function getStaticPaths() {
+  const all = (await getEntries("products", sortByTitle)) as ProductsEntry[];
+  const entries = all.filter((e) => e.data.published !== false);
+  // divisor below must equal entriesPerPage
+  const pageCount = Math.ceil(entries.length / 6);
+  const paths = [] as any[];
+
+  for (let i = 1; i < pageCount; i++) {
+    paths.push({
+      params: {
+        slug: (i + 1).toString(),
+      },
+    });
+  }
+  return paths;
+}
+---
+
+<CollectionLayout
+  entryIndex={entryIndex}
+  entries={currentEntries}
+  pageIndex={currentPageIndex}
+  pageCount={pageCount}
+/>
