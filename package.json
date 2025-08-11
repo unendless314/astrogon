@@ -9,7 +9,15 @@
     "dev": "astro dev",
     "build": "astro build",
     "postbuild": "pagefind --site dist",
-    "format": "prettier -w ./src"
+    "format": "prettier -w ./src",
+    "board": "node scripts/board.mjs",
+    "board:create": "node scripts/board.mjs create",
+    "board:complete": "node scripts/board.mjs complete",
+    "board:block": "node scripts/board.mjs block",
+    "board:unblock": "node scripts/board.mjs unblock",
+    "board:move": "node scripts/board.mjs move",
+    "board:edit": "node scripts/board.mjs edit",
+    "lint:board": "node scripts/lint-board.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^12.6.0",

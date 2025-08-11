@@ -1,0 +1,20 @@
+name: Lint Board
+
+on:
+  pull_request:
+    paths:
+      - 'docs/BOARD.md'
+      - 'scripts/lint-board.mjs'
+      - 'package.json'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: node scripts/lint-board.mjs
+
