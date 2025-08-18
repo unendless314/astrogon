@@ -5,6 +5,8 @@
 - [ ] 20250814-products-webhook-worker — Stripe Webhook Worker（驗證 + SendGrid 通知） (owner: ai:astrogon) [blocked: 等待 Cloudflare 環境與密鑰; review: 2025-08-20]
 
 ## DONE
-- [x] 20250814-products-collection-schema — 建立 products 內容集合與 schema (owner: ai:astrogon)
-- [x] 20250814-products-list-page — 建立 /products 列表頁（RWD + SEO） (owner: ai:astrogon)
-- [x] 20250814-products-detail-page — 建立 /products/[slug] 詳情頁（含付款連結） (owner: ai:astrogon)
+- [x] 20250818-boardrc-json-add-optional-config-done-keep-locktimeout — .boardrc.json: add optional config (DONE_KEEP, lockTimeout) (owner: ai:astrogon) [completed: 2025-08-18]
+- [x] 20250818-update-ci-workflow-to-use-kanban-linter — Update CI workflow to use kanban linter (owner: ai:astrogon) [completed: 2025-08-18]
+- [x] 20250818-update-agents-md-numeric-suffix-done-completed-commands — Update AGENTS.md: numeric suffix + DONE completed + commands (owner: ai:astrogon) [completed: 2025-08-18]
+- [x] 20250818-remove-legacy-board-scripts-and-linter — Remove legacy board scripts and linter (owner: ai:astrogon) [completed: 2025-08-18]
+- [x] 20250818-rewire-board-scripts-to-kanban-cli — Rewire board scripts to kanban CLI (owner: ai:astrogon) [completed: 2025-08-18]
