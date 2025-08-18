@@ -3,7 +3,7 @@ name: Lint Board
 on:
   pull_request:
     paths:
-      - 'docs/BOARD.md'
+      - 'kanban/docs/BOARD.md'
       - 'kanban/scripts/lint-board.mjs'
       - 'package.json'
 
