@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - 'docs/BOARD.md'
-      - 'scripts/lint-board.mjs'
+      - 'kanban/scripts/lint-board.mjs'
       - 'package.json'
 
 jobs:
@@ -16,5 +16,4 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: node scripts/lint-board.mjs
-
+      - run: node kanban/scripts/lint-board.mjs
