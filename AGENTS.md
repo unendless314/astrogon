@@ -56,3 +56,7 @@
 
 ### Linting
 - Run `npm run lint:board` to validate BOARD.md. CI should block merges that fail this linter.
+
+## Agent Notes
+- 2025-08-19: Archived `recipes`, `poetry`, and `index-cards` routes by moving their pages from `src/pages` to `src/patterns/pages/` (templates preserved for future reuse). See `src/patterns/README.md` for restore steps. Header navigation updated to hide these items.
+- 2025-08-19: Flattened `kanban/` hot-plug module into this repository by removing `kanban/.git` so board changes are tracked in Astrogon PRs. Previous module reference: origin `https://github.com/unendless314/kanban.git`, branch `master`, HEAD `c0a61ee`.

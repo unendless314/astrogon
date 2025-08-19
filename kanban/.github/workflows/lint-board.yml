@@ -1,0 +1,30 @@
+name: Lint Board & PR
+
+on:
+  pull_request:
+    paths:
+      - 'docs/BOARD.md'
+      - 'scripts/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Clean stale locks
+        run: node -e "import('./scripts/simple-lock.mjs').then(m => m.cleanStaleLock())"
+
+      - name: Lint board format
+        run: node scripts/lint-board.mjs
+
+      - name: Validate PR description
+        if: github.event_name == 'pull_request'
+        run: |
+          echo '${{ github.event.pull_request.body }}' | node scripts/validate-pr.mjs
+

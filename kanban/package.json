@@ -1,0 +1,23 @@
+{
+  "name": "lightboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lightweight Kanban board CLI, linter, and CI (zero-deps)",
+  "scripts": {
+    "board:create": "node scripts/board.mjs create",
+    "board:complete": "node scripts/board.mjs complete",
+    "board:block": "node scripts/board.mjs block",
+    "board:unblock": "node scripts/board.mjs unblock",
+    "board:move": "node scripts/board.mjs move",
+    "board:edit": "node scripts/board.mjs edit",
+    "board:list": "node scripts/board.mjs list",
+    "board:archive": "node scripts/board.mjs archive",
+    "lint:board": "node scripts/lint-board.mjs",
+    "validate:pr": "node scripts/validate-pr.mjs",
+    "board:clean-lock": "node -e \"import('./scripts/simple-lock.mjs').then(m => m.cleanStaleLock())\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+
