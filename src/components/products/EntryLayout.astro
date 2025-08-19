@@ -4,6 +4,7 @@ import BaseLayout from "@components/base/BaseLayout.astro";
 import Button from "@components/common/Button.astro";
 import { Image } from "astro:assets";
 import { render } from "astro:content";
+import { markdownify } from "@lib/textConverter";
 
 interface Props {
   entry: ProductsEntry;
@@ -46,7 +47,9 @@ const metaDescription = summary || description || undefined;
                 <Button label="前往付款" link={paymentUrl} newtab={true} type="primary" />
               </div>
               {metaDescription && (
-                <div class="text-sm text-txt-light dark:text-darkmode-txt-light">{metaDescription}</div>
+                <div class="content text-sm text-txt-light dark:text-darkmode-txt-light">
+                  <div set:html={markdownify(metaDescription, true)} />
+                </div>
               )}
             </div>
           </section>
@@ -61,4 +64,3 @@ const metaDescription = summary || description || undefined;
     </div>
   </section>
 </BaseLayout>
-
